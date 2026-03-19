@@ -22,7 +22,7 @@ public class SpeedBoostManager : MonoBehaviour
     [SerializeField] private float baseSpeed = 50f;
 
     [Tooltip("Hard cap on speed (ticks/s). Expensive gifts stack but cannot exceed this.")]
-    [SerializeField] private float maxSpeed  = 150f;
+    [SerializeField] private float maxSpeed  = 5000f;
 
     [Header("Gift → Permanent Speed (unified by diamond value)")]
     [Tooltip("Permanent ticks/s added per 💎 diamond received.\n" +

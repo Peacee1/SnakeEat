@@ -126,12 +126,9 @@ public static class SnakeGameSetup
         SetField(speedBoost, "tiktokConnector",  tiktokConnector);
         SetField(speedBoost, "uiManager",        uiManager);
         SetField(speedBoost, "baseSpeed",        50f);
-        SetField(speedBoost, "maxSpeed",         1000f);
-        SetField(speedBoost, "speedPerDiamond",  0.05f);
-        SetField(speedBoost, "boostDuration",    5f);
-        SetField(speedBoost, "roseGiftName",     "Rose");
-        SetField(speedBoost, "roseSpeedBoost",   1f);
-        SetField(speedBoost, "likeMilestone",    50);
+        SetField(speedBoost, "maxSpeed",         5000f);  // cap để AI không bị FPS drop
+        SetField(speedBoost, "speedPerDiamond",  1f);     // 1 Rose (1💎) = +1 ticks/s
+        SetField(speedBoost, "likeMilestone",    100);    // mỗi 100 likes = +1 ticks/s
         SetField(speedBoost, "likeSpeedBoost",   1f);
 
         // ── 7. Camera ─────────────────────────────────────────────────────────
@@ -143,9 +140,10 @@ public static class SnakeGameSetup
 
         Debug.Log(
             "✅ <b>Snake scene setup complete!</b>\n" +
-            "• 50×50 board, startPos=(25,25), tickInterval=0.01\n" +
+            "• 50×50 board, startPos=(25,25), tickInterval=0.02\n" +
             "• TikTokConnector → ws://localhost:8765\n" +
-            "• SpeedBoostManager wired (Rose gift + 10k likes → permanent +1 ticks/s)\n" +
+            "• 1 Rose (1💎) → +1 ticks/s permanent\n" +
+            "• Every 100 likes → +1 ticks/s permanent\n" +
             "Press <b>Play ▶</b> to start."
         );
 
@@ -154,8 +152,9 @@ public static class SnakeGameSetup
             "Scene fully configured:\n\n" +
             "• 50×50 board, AI auto-play ON\n" +
             "• TikTokConnector: ws://localhost:8765\n" +
-            "• Rose gift → +1 ticks/s permanent\n" +
-            "• Every 10k likes → +1 ticks/s permanent\n\n" +
+            "• Gift: 1💎 = +1 ticks/s permanent (all gifts unified)\n" +
+            "• Every 100 likes → +1 ticks/s permanent\n" +
+            "• Max speed: 150 ticks/s\n\n" +
             "Start node server BEFORE pressing Play:\n" +
             "node server.js <username> <sessionid>",
             "Let's go! 🐍");

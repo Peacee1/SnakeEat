@@ -41,6 +41,11 @@ public class GameManager : MonoBehaviour
     private float       _lastTurnSfxTime = -1f;
     private const float TurnSfxCooldown  = 0.08f;  // max ~12 clicks/s
 
+    // Background music (random shuffle)
+    private AudioSource  _bgSource;
+    private AudioClip[]  _bgClips;
+    private int          _lastBgIndex = -1;
+
     // ─────────────────────────────────────────────────────────────────────────
 
     private void Start()
@@ -55,26 +60,52 @@ public class GameManager : MonoBehaviour
         _sfx.playOnAwake = false;
         _sfx.volume      = 0.6f;
 
-        // Background music — loops at half volume.
-        var bgClip = Resources.Load<AudioClip>("SFX/SoundBackground1");
-        if (bgClip != null)
+        // Background music — random shuffle across all SoundBackground clips.
+        var bgNames = new[] { "SFX/SoundBackground1", "SFX/SoundBackground2" };
+        var loaded  = new System.Collections.Generic.List<AudioClip>();
+        foreach (var n in bgNames)
         {
-            var bgSource        = gameObject.AddComponent<AudioSource>();
-            bgSource.clip        = bgClip;
-            bgSource.loop        = true;
-            bgSource.volume      = 0.25f;
-            bgSource.playOnAwake = false;
-            bgSource.Play();
+            var c = Resources.Load<AudioClip>(n);
+            if (c != null) loaded.Add(c);
+            else Debug.LogWarning($"[GameManager] BG track not found: {n}");
         }
-        else Debug.LogWarning("[GameManager] Background music not found at Resources/SFX/SoundBackground1");
+        if (loaded.Count > 0)
+        {
+            _bgClips  = loaded.ToArray();
+            _bgSource = gameObject.AddComponent<AudioSource>();
+            _bgSource.loop        = false;   // we handle looping manually for random pick
+            _bgSource.volume      = 0.25f;
+            _bgSource.playOnAwake = false;
+            PlayRandomBgTrack();
+        }
 
         StartGame();
+    }
+
+    /// <summary>Picks a random background track (avoiding immediate repeat if >1 track).</summary>
+    private void PlayRandomBgTrack()
+    {
+        if (_bgClips == null || _bgClips.Length == 0) return;
+
+        int next = _lastBgIndex;
+        if (_bgClips.Length > 1)
+            while (next == _lastBgIndex) next = UnityEngine.Random.Range(0, _bgClips.Length);
+        else
+            next = 0;
+
+        _lastBgIndex      = next;
+        _bgSource.clip    = _bgClips[next];
+        _bgSource.Play();
     }
 
     private void Update()
     {
         // Cap deltaTime so a single heavy frame never drains the timer instantly.
         float dt = Mathf.Min(Time.deltaTime, 0.05f);
+
+        // Auto-advance background music when a track finishes.
+        if (_bgSource != null && !_bgSource.isPlaying)
+            PlayRandomBgTrack();
 
         if (_isGameOver || _isWin)
         {

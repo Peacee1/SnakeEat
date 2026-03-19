@@ -19,7 +19,7 @@ public class FoodSpawner : MonoBehaviour
     private Tween       _rippleLoop;
 
     // Pre-generate N future food positions so AutoPlayer can plan ahead.
-    private const int FutureCount = 2;
+    private const int FutureCount = 10;
     private readonly Queue<Vector2Int> _futureQueue = new();
     private readonly List<Vector2Int>  _upcomingList = new();
 
