@@ -556,10 +556,7 @@ MonoBehaviour:
   uiManager: {fileID: 895792519}
   baseSpeed: 50
   maxSpeed: 1000
-  speedPerDiamond: 0.05
-  boostDuration: 5
-  roseGiftName: Rose
-  roseSpeedBoost: 1
+  speedPerDiamond: 1
   likeMilestone: 50
   likeSpeedBoost: 1
 --- !u!1 &1446105418

@@ -32,7 +32,7 @@ public class GameManager : MonoBehaviour
     private float      _restartTimer;
     private const float RestartDelay = 2f;
     private const float WinDelay     = 3f;
-    private const int   WinScore     = 500;
+    private const int   WinScore     = 2000;
 
     // SFX
     private AudioSource _sfx;
