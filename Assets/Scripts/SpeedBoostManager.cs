@@ -1,14 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Listens to TikTokConnector gift/like events and applies speed boosts to the snake.
+/// Listens to TikTokConnector gift/like events and applies speed boosts.
 ///
-/// Triggers (permanent, stackable):
-///   • 1 Rose gift   → +roseSpeedBoost ticks/s
-///   • every likeMilestone likes → +likeSpeedBoost ticks/s
+/// Gift logic (unified — same diamond value = same effect):
+///   diamonds × repeatCount × speedPerDiamond → permanent ticks/s added.
+///   Default: 1 Rose (1 💎) = +1 ticks/s.
 ///
-/// Temporary boost (existing):
-///   • Any gift → +diamonds × speedPerDiamond ticks/s for boostDuration seconds
+/// Like milestone:
+///   Every likeMilestone new likes → +likeSpeedBoost ticks/s permanent.
 /// </summary>
 public class SpeedBoostManager : MonoBehaviour
 {
@@ -19,40 +19,30 @@ public class SpeedBoostManager : MonoBehaviour
 
     [Header("Base Speed")]
     [Tooltip("Starting ticks-per-second (no boost)")]
-    [SerializeField] private float baseSpeed     = 50f;
+    [SerializeField] private float baseSpeed = 50f;
 
-    [Tooltip("Max speed reachable (ticks/s)")]
-    [SerializeField] private float maxSpeed      = 200f;
+    [Tooltip("Hard cap on speed (ticks/s). Expensive gifts stack but cannot exceed this.")]
+    [SerializeField] private float maxSpeed  = 150f;
 
-    [Header("Diamond Boost (temporary)")]
-    [Tooltip("Speed added per 💎 diamond")]
-    [SerializeField] private float speedPerDiamond = 0.05f;
+    [Header("Gift → Permanent Speed (unified by diamond value)")]
+    [Tooltip("Permanent ticks/s added per 💎 diamond received.\n" +
+             "1 Rose = 1 💎 → +1 ticks/s by default.\n" +
+             "All gifts with the same diamond value give the same boost.")]
+    [SerializeField] private float speedPerDiamond = 1f;
 
-    [Tooltip("How long one gift's boost lasts (seconds)")]
-    [SerializeField] private float boostDuration   = 5f;
-
-    [Header("Rose Gift → Permanent Speed Boost")]
-    [Tooltip("Gift name to match (case-insensitive)")]
-    [SerializeField] private string roseGiftName   = "Rose";
-
-    [Tooltip("Ticks/s permanently added per rose")]
-    [SerializeField] private float  roseSpeedBoost = 1f;
-
-    [Header("Like Milestone → Permanent Speed Boost")]
-    [Tooltip("How many new likes trigger one boost")]
-    [SerializeField] private int   likeMilestone  = 50;
+    [Header("Like Milestone → Permanent Speed")]
+    [Tooltip("How many new likes trigger one boost step")]
+    [SerializeField] private int   likeMilestone  = 100;
 
     [Tooltip("Ticks/s permanently added per milestone")]
     [SerializeField] private float likeSpeedBoost = 1f;
 
     // ── Runtime ────────────────────────────────────────────────────────────────
-    private float _permanentBoost;  // cumulative permanent ticks/s
-    private float _tempBoost;       // current temporary boost on top
-    private float _boostEndTime;
+    private float _permanentBoost;
     private int   _totalLikes;
     private int   _nextLikeMilestone;
 
-    private float CurrentSpeed => Mathf.Min(baseSpeed + _permanentBoost + _tempBoost, maxSpeed);
+    private float CurrentSpeed => Mathf.Min(baseSpeed + _permanentBoost, maxSpeed);
 
     private void Start()
     {
@@ -71,16 +61,6 @@ public class SpeedBoostManager : MonoBehaviour
         tiktokConnector.OnDisconnected += ()  => Debug.LogWarning("[Boost] TikTok disconnected.");
     }
 
-    private void Update()
-    {
-        // Decay temporary boost
-        if (Time.time > _boostEndTime && _tempBoost > 0f)
-        {
-            _tempBoost = Mathf.MoveTowards(_tempBoost, 0f, 2f * Time.deltaTime);
-            ApplySpeed(CurrentSpeed);
-        }
-    }
-
     private void OnDestroy()
     {
         if (tiktokConnector != null)
@@ -94,25 +74,28 @@ public class SpeedBoostManager : MonoBehaviour
 
     private void HandleGift(TikTokConnector.GiftEvent gift)
     {
-        // Rose → permanent boost
-        if (gift.giftName.Equals(roseGiftName, System.StringComparison.OrdinalIgnoreCase))
-        {
-            float added = roseSpeedBoost * gift.repeatCount;
-            _permanentBoost += added;
-            ApplySpeed(CurrentSpeed);
-            uiManager?.ShowGiftNotification(gift.username, added, "🌹");
-            Debug.Log($"[Boost] 🌹 Rose x{gift.repeatCount} from @{gift.username} → +{added:F1} perm | total perm: {_permanentBoost:F1}");
-            return;
-        }
-
-        // Any other gift → temporary diamond boost
+        // Unified formula: same diamond value → same permanent boost.
+        // 1 Rose (1 💎) × speedPerDiamond (1.0) = +1 ticks/s.
         int   totalDiamonds = gift.diamonds * gift.repeatCount;
-        float tempAdded     = totalDiamonds * speedPerDiamond;
-        _tempBoost    = Mathf.Max(_tempBoost + tempAdded, 0f);
-        _boostEndTime = Time.time + boostDuration;
+        float added         = totalDiamonds * speedPerDiamond;
+        _permanentBoost    += added;
+
         ApplySpeed(CurrentSpeed);
-        uiManager?.ShowGiftNotification(gift.username, tempAdded, "🎁");
-        Debug.Log($"[Boost] 🎁 {gift.giftName} x{gift.repeatCount} (+{tempAdded:F1} temp for {boostDuration}s)");
+
+        // Pick emoji based on gift name for the notification.
+        string emoji = gift.giftName.ToLower() switch
+        {
+            "rose"    => "🌹",
+            "galaxy"  => "🌌",
+            "lion"    => "🦁",
+            "universe"=> "🌐",
+            _         => "🎁"
+        };
+
+        uiManager?.ShowGiftNotification(gift.username, added, emoji);
+        Debug.Log($"[Boost] {emoji} {gift.giftName} x{gift.repeatCount} ({totalDiamonds}💎) " +
+                  $"from @{gift.username} → +{added:F1} perm | total perm: {_permanentBoost:F1} | " +
+                  $"speed: {CurrentSpeed:F1}/{maxSpeed}");
     }
 
     private void HandleLike(TikTokConnector.LikeEvent like)
@@ -125,29 +108,27 @@ public class SpeedBoostManager : MonoBehaviour
             _nextLikeMilestone += likeMilestone;
             ApplySpeed(CurrentSpeed);
             uiManager?.ShowGiftNotification(like.username, likeSpeedBoost, "❤️");
-            Debug.Log($"[Boost] ❤️ {_nextLikeMilestone - likeMilestone} likes milestone! +{likeSpeedBoost:F1} perm | total likes: {_totalLikes}");
+            Debug.Log($"[Boost] ❤️ Like milestone {_nextLikeMilestone - likeMilestone}! " +
+                      $"+{likeSpeedBoost:F1} perm | total likes: {_totalLikes}");
         }
     }
 
-    // ── Apply speed to GameManager ─────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────────
 
-    /// <summary>Resets all boosts to zero and returns to base speed. Call on game over or win.</summary>
+    /// <summary>Resets all boosts. Call on game over / win.</summary>
     public void ResetSpeed()
     {
         _permanentBoost    = 0f;
-        _tempBoost         = 0f;
-        _boostEndTime      = 0f;
         _totalLikes        = 0;
         _nextLikeMilestone = likeMilestone;
         ApplySpeed(baseSpeed);
-        Debug.Log($"[Boost] ♻️ Speed reset to base: {baseSpeed}");
+        Debug.Log($"[Boost] ♻️ Speed reset → {baseSpeed} ticks/s");
     }
 
     private void ApplySpeed(float ticksPerSecond)
     {
         if (gameManager != null)
             gameManager.SetTickInterval(1f / Mathf.Max(ticksPerSecond, 0.1f));
-
         if (uiManager != null)
             uiManager.UpdateSpeed(ticksPerSecond);
     }

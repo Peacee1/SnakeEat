@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 
@@ -17,10 +18,23 @@ public class FoodSpawner : MonoBehaviour
     private GameObject  _currentFood;
     private Tween       _rippleLoop;
 
+    // Pre-generate N future food positions so AutoPlayer can plan ahead.
+    private const int FutureCount = 2;
+    private readonly Queue<Vector2Int> _futureQueue = new();
+    private readonly List<Vector2Int>  _upcomingList = new();
+
+    /// <summary>Upcoming food positions (next FutureCount spawns after the current one).</summary>
+    public IReadOnlyList<Vector2Int> UpcomingFoodPositions => _upcomingList;
+
     public void Initialize(GridManager grid, ISnakeState snakeState)
     {
         _grid       = grid;
         _snakeState = snakeState;
+
+        // Pre-fill the future queue so UpcomingFoodPositions is ready from turn 1.
+        _futureQueue.Clear();
+        for (int i = 0; i < FutureCount; i++) _futureQueue.Enqueue(GenerateFoodCell());
+        RefreshUpcomingList();
     }
 
     /// <summary>Destroys existing food (if any) and spawns new food at a valid position.</summary>
@@ -29,7 +43,11 @@ public class FoodSpawner : MonoBehaviour
         _rippleLoop?.Kill();
         if (_currentFood != null) Destroy(_currentFood);
 
-        Vector2Int pos = GetValidFoodPosition();
+        // Pop the next pre-generated position from the queue, then replenish.
+        Vector2Int pos = _futureQueue.Count > 0 ? _futureQueue.Dequeue() : GenerateFoodCell();
+        FoodPosition = pos;
+        while (_futureQueue.Count < FutureCount) _futureQueue.Enqueue(GenerateFoodCell());
+        RefreshUpcomingList();
         _currentFood = Instantiate(foodPrefab, _grid.GridToWorld(pos),
             Quaternion.identity, transform);
 
@@ -102,12 +120,18 @@ public class FoodSpawner : MonoBehaviour
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private Vector2Int GetValidFoodPosition()
+    private void RefreshUpcomingList()
+    {
+        _upcomingList.Clear();
+        foreach (var p in _futureQueue) _upcomingList.Add(p);
+    }
+
+    /// <summary>Generates a random free cell WITHOUT setting FoodPosition (no side-effect).</summary>
+    private Vector2Int GenerateFoodCell()
     {
         Vector2Int candidate;
-        int maxAttempts = _grid.Width * _grid.Height;
+        int maxAttempts = _grid != null ? _grid.Width * _grid.Height : 1;
         int attempts    = 0;
-
         do
         {
             candidate = _grid.GetRandomCell();
@@ -120,7 +144,6 @@ public class FoodSpawner : MonoBehaviour
         }
         while (IsOccupiedBySnake(candidate));
 
-        FoodPosition = candidate;
         return candidate;
     }
 

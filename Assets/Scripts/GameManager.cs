@@ -54,6 +54,20 @@ public class GameManager : MonoBehaviour
         _sfx = gameObject.AddComponent<AudioSource>();
         _sfx.playOnAwake = false;
         _sfx.volume      = 0.6f;
+
+        // Background music — loops at half volume.
+        var bgClip = Resources.Load<AudioClip>("SFX/SoundBackground1");
+        if (bgClip != null)
+        {
+            var bgSource        = gameObject.AddComponent<AudioSource>();
+            bgSource.clip        = bgClip;
+            bgSource.loop        = true;
+            bgSource.volume      = 0.25f;
+            bgSource.playOnAwake = false;
+            bgSource.Play();
+        }
+        else Debug.LogWarning("[GameManager] Background music not found at Resources/SFX/SoundBackground1");
+
         StartGame();
     }
 
