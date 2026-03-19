@@ -90,9 +90,9 @@ public static class SnakeGameSetup
 
         // ── 6. Wire all [SerializeField] references ───────────────────────────
 
-        // GridManager — 50×50 board
-        SetField(gridManager, "width",  50);
-        SetField(gridManager, "height", 50);
+        // GridManager — Level 1: 5×5 board (resized at runtime by GameManager)
+        SetField(gridManager, "width",  5);
+        SetField(gridManager, "height", 5);
 
         // SnakeController
         SetField(snakeCtrl, "segmentPrefab", segmentPrefab);
@@ -113,9 +113,11 @@ public static class SnakeGameSetup
         SetField(gameManager, "inputReader",       inputReader);
         SetField(gameManager, "autoPlayer",        autoPlayer);
         SetField(gameManager, "speedBoostManager", speedBoost);
-        SetField(gameManager, "startPosition",     new Vector2Int(25, 25));
+        SetField(gameManager, "startPosition",     new Vector2Int(2, 2));  // center of L1 5×5 board
         SetField(gameManager, "startDirection",    new Vector2Int(1, 0));
-        SetField(gameManager, "tickInterval",      1f / 50f);  // base 50 ticks/s
+        // tickInterval is overridden at runtime by GameManager.SetupLevel() via SpeedBoostManager.
+        // Set to Level 1 default (3 ticks/s) as a safe fallback.
+        SetField(gameManager, "tickInterval",      1f / 3f);
 
         // TikTokConnector
         SetField(tiktokConnector, "serverUrl",       "ws://localhost:8765");
@@ -125,8 +127,8 @@ public static class SnakeGameSetup
         SetField(speedBoost, "gameManager",      gameManager);
         SetField(speedBoost, "tiktokConnector",  tiktokConnector);
         SetField(speedBoost, "uiManager",        uiManager);
-        SetField(speedBoost, "baseSpeed",        50f);
-        SetField(speedBoost, "maxSpeed",         5000f);  // cap để AI không bị FPS drop
+        SetField(speedBoost, "baseSpeed",        3f);    // Level 1 default — GameManager overrides via ScaleSpeedForLevelUp()
+        SetField(speedBoost, "maxSpeed",         5000f);
         SetField(speedBoost, "speedPerDiamond",  1f);     // 1 Rose (1💎) = +1 ticks/s
         SetField(speedBoost, "likeMilestone",    100);    // mỗi 100 likes = +1 ticks/s
         SetField(speedBoost, "likeSpeedBoost",   1f);
@@ -140,9 +142,11 @@ public static class SnakeGameSetup
 
         Debug.Log(
             "✅ <b>Snake scene setup complete!</b>\n" +
-            "• 50×50 board, startPos=(25,25), tickInterval=0.02\n" +
+            "• Level 1: 5×5 board | Level 5: 80×80 board\n" +
+            "• Speed: L1=3 t/s, doubles each level (3→6→12→24→48)\n" +
+            "• Level-up at 30% fill (L1-4), Win at 60% fill (L5)\n" +
             "• TikTokConnector → ws://localhost:8765\n" +
-            "• 1 Rose (1💎) → +1 ticks/s permanent\n" +
+            "• 1 Rose (1💎) → +1 ticks/s permanent (scales with level)\n" +
             "• Every 100 likes → +1 ticks/s permanent\n" +
             "Press <b>Play ▶</b> to start."
         );
@@ -150,11 +154,12 @@ public static class SnakeGameSetup
         EditorUtility.DisplayDialog(
             "✅ Setup Complete!",
             "Scene fully configured:\n\n" +
-            "• 50×50 board, AI auto-play ON\n" +
-            "• TikTokConnector: ws://localhost:8765\n" +
-            "• Gift: 1💎 = +1 ticks/s permanent (all gifts unified)\n" +
-            "• Every 100 likes → +1 ticks/s permanent\n" +
-            "• Max speed: 150 ticks/s\n\n" +
+            "• Level 1: 5×5 → Level 5: 80×80 (doubles each level)\n" +
+            "• Speed: 3 t/s at L1, doubles each level (max 48 base)\n" +
+            "• Level-up trigger: 30% fill (levels 1–4)\n" +
+            "• Win condition: 60% fill at Level 5\n" +
+            "• Gift: 1💎 = +1 ticks/s (scales ×2 on level-up)\n" +
+            "• Every 100 likes → +1 ticks/s permanent\n\n" +
             "Start node server BEFORE pressing Play:\n" +
             "node server.js <username> <sessionid>",
             "Let's go! 🐍");
@@ -251,10 +256,10 @@ public static class SnakeGameSetup
         Undo.RecordObject(cam, "Setup Camera");
         Undo.RecordObject(cam.transform, "Setup Camera Transform");
 
-        // 50×50 grid centered at origin → spans ±25 units.
-        // orthographicSize = 26 gives small padding.
+        // Start with Level 1 (5×5) view. GameManager.FitCamera() auto-zooms on level-up.
+        // 5×5 grid centered at origin → spans ±2.5 units. Size=4 gives nice padding.
         cam.orthographic       = true;
-        cam.orthographicSize   = 26f;
+        cam.orthographicSize   = 4f;
         cam.transform.position = new Vector3(0f, 0f, -10f);
         cam.backgroundColor    = new Color(0.05f, 0.05f, 0.08f);
         cam.clearFlags         = CameraClearFlags.SolidColor;
