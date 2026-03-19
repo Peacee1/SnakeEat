@@ -35,19 +35,33 @@ public class UIManager : MonoBehaviour
         {
             var parent = scoreText.transform.parent;
 
-            // Line 1: ❤️ likes rule
+            // Line 1: heart icon + "100 hearts = +1 speed"
+            var heartSprite = Resources.Load<Sprite>("Pic/phong-cach-hoat-hinh-trai-tim_78370-7988-removebg-preview");
+            if (heartSprite != null)
+            {
+                var heartIconGO = new GameObject("HeartIcon");
+                heartIconGO.transform.SetParent(parent, false);
+                var heartImg = heartIconGO.AddComponent<Image>();
+                heartImg.sprite         = heartSprite;
+                heartImg.preserveAspect = true;
+                var rtH = heartIconGO.GetComponent<RectTransform>();
+                rtH.anchorMin = rtH.anchorMax = rtH.pivot = new Vector2(0f, 0f);
+                rtH.anchoredPosition = new Vector2(30f, 78f);  // +3.5 to center with 45px text
+                rtH.sizeDelta        = new Vector2(38f, 38f);
+            }
+
             var line1GO = new GameObject("RuleLine1");
             line1GO.transform.SetParent(parent, false);
             var l1 = line1GO.AddComponent<TextMeshProUGUI>();
-            l1.text      = "❤️ 50 hearts = +1 speed";
+            l1.text      = "100 hearts = +1 speed";
             l1.font      = scoreText.font;
             l1.fontSize  = scoreText.fontSize * 0.60f;
             l1.color     = new Color(0.75f, 0.75f, 0.75f, 0.85f);
             l1.fontStyle = scoreText.fontStyle;
             var rt1 = line1GO.GetComponent<RectTransform>();
             rt1.anchorMin = rt1.anchorMax = rt1.pivot = new Vector2(0f, 0f);
-            rt1.anchoredPosition = new Vector2(30f, 75f);
-            rt1.sizeDelta        = new Vector2(380f, 45f);
+            rt1.anchoredPosition = new Vector2(74f, 75f);  // offset right of heart icon
+            rt1.sizeDelta        = new Vector2(340f, 45f);
 
             // Line 2: rose icon + "1 Rose = +1 speed"
             // Rose sprite icon
