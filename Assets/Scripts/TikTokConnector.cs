@@ -37,6 +37,30 @@ public class TikTokConnector : MonoBehaviour
             while (_mainThreadQueue.Count   > 0) HandleMessage(_mainThreadQueue.Dequeue());
             while (_mainThreadActions.Count > 0) _mainThreadActions.Dequeue()?.Invoke();
         }
+
+        // ── Debug: press P to simulate admin29 gifting 1 Rose ────────────────
+        if (UnityEngine.Input.GetKeyDown(KeyCode.P))
+            SimulateGift("admin29", "Rose", giftId: 1, diamonds: 1, repeatCount: 1);
+    }
+
+    /// <summary>
+    /// Fires a fake GiftEvent on the main thread — useful for local testing
+    /// without a live TikTok connection.
+    /// </summary>
+    private void SimulateGift(string username, string giftName,
+                               int giftId, int diamonds, int repeatCount)
+    {
+        var fakeGift = new GiftEvent
+        {
+            type        = "gift",
+            username    = username,
+            giftId      = giftId,
+            giftName    = giftName,
+            diamonds    = diamonds,
+            repeatCount = repeatCount,
+        };
+        Debug.Log($"[TikTok] 🧪 SIM: {giftName} ×{repeatCount} from @{username}");
+        OnGift?.Invoke(fakeGift);
     }
 
     private void OnDestroy()
