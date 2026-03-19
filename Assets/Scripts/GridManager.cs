@@ -2,21 +2,19 @@ using UnityEngine;
 
 /// <summary>
 /// GridManager defines the play area.
-/// It converts between grid coordinates (Vector2Int) and world positions (Vector3).
-/// Also draws a visible border and a dark background at runtime.
-/// Attach to: GridManager GameObject.
+/// Supports runtime resize via Resize(w, h) for the level-progression system.
 /// </summary>
 public class GridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private int   width    = 50;
-    [SerializeField] private int   height   = 50;
+    [SerializeField] private int   width    = 5;
+    [SerializeField] private int   height   = 5;
     [SerializeField] private float cellSize = 1f;
 
     [Header("Visuals")]
-    [SerializeField] private Color borderColor     = new Color(0.3f, 0.9f, 0.4f, 1f);  // green border
+    [SerializeField] private Color borderColor     = new Color(0.3f, 0.9f, 0.4f, 1f);
     [SerializeField] private float borderThickness  = 0.08f;
-    [SerializeField] private Color backgroundColor = new Color(0.06f, 0.09f, 0.06f, 1f); // dark board bg
+    [SerializeField] private Color backgroundColor = new Color(0.06f, 0.09f, 0.06f, 1f);
     [SerializeField] private bool  showBackground   = true;
 
     // ── Public properties ─────────────────────────────────────────────────────
@@ -24,24 +22,50 @@ public class GridManager : MonoBehaviour
     public int   Height   => height;
     public float CellSize => cellSize;
 
-    // Bottom-left CENTER of cell (0,0), grid is centered on world origin.
     public Vector3 Origin => new Vector3(
         -(width  * cellSize) / 2f + cellSize / 2f,
         -(height * cellSize) / 2f + cellSize / 2f,
         0f
     );
 
-    // The four corners of the board (outer edge of border cells).
     private Vector3 BottomLeft  => new Vector3(-(width  * cellSize) / 2f, -(height * cellSize) / 2f, 0f);
     private Vector3 BottomRight => new Vector3( (width  * cellSize) / 2f, -(height * cellSize) / 2f, 0f);
     private Vector3 TopRight    => new Vector3( (width  * cellSize) / 2f,  (height * cellSize) / 2f, 0f);
     private Vector3 TopLeft     => new Vector3(-(width  * cellSize) / 2f,  (height * cellSize) / 2f, 0f);
+
+    // Runtime visual objects
+    private GameObject   _bgGO;
+    private LineRenderer _borderLR;
 
     // ─────────────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         if (showBackground) CreateBackground();
+        CreateBorder();
+    }
+
+    // ── Runtime resize ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resizes the board at runtime. Rebuilds the background and border visuals.
+    /// Call this before re-initialising the snake and food spawner.
+    /// </summary>
+    public void Resize(int newWidth, int newHeight)
+    {
+        width  = newWidth;
+        height = newHeight;
+        RebuildVisuals();
+    }
+
+    private void RebuildVisuals()
+    {
+        // Background
+        if (_bgGO != null) Destroy(_bgGO);
+        if (showBackground) CreateBackground();
+
+        // Border
+        if (_borderLR != null) Destroy(_borderLR.gameObject);
         CreateBorder();
     }
 
@@ -65,64 +89,47 @@ public class GridManager : MonoBehaviour
 
     // ── Visual builders ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Creates a filled quad behind the board for a dark background.
-    /// Uses a plain white sprite tinted with backgroundColor.
-    /// </summary>
     private void CreateBackground()
     {
-        var go = new GameObject("BoardBackground");
-        go.transform.SetParent(transform, false);
-        go.transform.position = Vector3.zero;
+        _bgGO = new GameObject("BoardBackground");
+        _bgGO.transform.SetParent(transform, false);
+        _bgGO.transform.localPosition = new Vector3(0f, 0f, 0.1f);
 
-        // Push it slightly behind everything else.
-        go.transform.localPosition = new Vector3(0f, 0f, 0.1f);
-
-        var sr = go.AddComponent<SpriteRenderer>();
+        var sr = _bgGO.AddComponent<SpriteRenderer>();
         sr.sprite = CreateWhiteSprite();
         sr.color  = backgroundColor;
         sr.sortingOrder = -10;
 
-        // Scale to cover the entire grid.
-        go.transform.localScale = new Vector3(width * cellSize, height * cellSize, 1f);
+        _bgGO.transform.localScale = new Vector3(width * cellSize, height * cellSize, 1f);
     }
 
-    /// <summary>
-    /// Creates a LineRenderer that draws the rectangular border of the board.
-    /// </summary>
     private void CreateBorder()
     {
         var go = new GameObject("BoardBorder");
         go.transform.SetParent(transform, false);
 
-        var lr = go.AddComponent<LineRenderer>();
+        _borderLR = go.AddComponent<LineRenderer>();
+        _borderLR.material         = new Material(Shader.Find("Sprites/Default"));
+        _borderLR.startColor       = borderColor;
+        _borderLR.endColor         = borderColor;
+        _borderLR.startWidth       = borderThickness;
+        _borderLR.endWidth         = borderThickness;
+        _borderLR.positionCount    = 5;
+        _borderLR.useWorldSpace    = true;
+        _borderLR.loop             = false;
+        _borderLR.sortingOrder     = 10;
 
-        // Use the built-in Sprites/Default shader so no extra material is needed.
-        lr.material         = new Material(Shader.Find("Sprites/Default"));
-        lr.startColor       = borderColor;
-        lr.endColor         = borderColor;
-        lr.startWidth       = borderThickness;
-        lr.endWidth         = borderThickness;
-        lr.positionCount    = 5;          // 4 corners + close the loop
-        lr.useWorldSpace    = true;
-        lr.loop             = false;
-        lr.sortingOrder     = 10;         // in front of everything
-
-        // Slightly offset to sit in front of background
         float z = -0.05f;
-        lr.SetPositions(new Vector3[]
+        _borderLR.SetPositions(new Vector3[]
         {
             new(BottomLeft.x,  BottomLeft.y,  z),
             new(BottomRight.x, BottomRight.y, z),
             new(TopRight.x,    TopRight.y,    z),
             new(TopLeft.x,     TopLeft.y,     z),
-            new(BottomLeft.x,  BottomLeft.y,  z),   // close loop
+            new(BottomLeft.x,  BottomLeft.y,  z),
         });
     }
 
-    /// <summary>
-    /// Programmatically creates a 1×1 white sprite so we don't need a texture asset.
-    /// </summary>
     private static Sprite CreateWhiteSprite()
     {
         var tex = new Texture2D(1, 1);
@@ -136,14 +143,12 @@ public class GridManager : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {
-        // Outer border (matches the LineRenderer at runtime)
         Gizmos.color = borderColor;
         Gizmos.DrawLine(BottomLeft,  BottomRight);
         Gizmos.DrawLine(BottomRight, TopRight);
         Gizmos.DrawLine(TopRight,    TopLeft);
         Gizmos.DrawLine(TopLeft,     BottomLeft);
 
-        // Cell grid (faint)
         Gizmos.color = new Color(0.2f, 0.8f, 0.2f, 0.12f);
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)

@@ -25,6 +25,10 @@ public class SnakeController : MonoBehaviour, ISnakeState
     [SerializeField] private float pulseAmplitude = 0.12f;  // ±scale (±12%)
     [SerializeField] private float pulsePeriod    = 0.9f;   // seconds per full cycle
 
+    [Header("Gradient Colors")]
+    [SerializeField] private Color headColor = new Color(0.20f, 1.00f, 0.45f, 1f);  // bright green
+    [SerializeField] private Color tailColor = new Color(0.04f, 0.22f, 0.08f, 1f);  // very dark green
+
     // Exposed so GameManager can include them in game-over debug.
     public int        Length        => _segmentPositions.Count;
     public Vector2Int HeadPosition  => _segmentPositions[0];
@@ -45,14 +49,23 @@ public class SnakeController : MonoBehaviour, ISnakeState
 
     private void Update()
     {
-        // Body alternating pulse
-        float t = Time.time;
-        for (int i = 0; i < _segmentObjects.Count; i++)
+        // Body alternating pulse + gradient color
+        float t   = Time.time;
+        int   cnt = _segmentObjects.Count;
+        for (int i = 0; i < cnt; i++)
         {
             if (_segmentObjects[i] == null) continue;
+
+            // Pulse
             float phase = (i % 2 == 0) ? 0f : Mathf.PI;
             float s = 1f + pulseAmplitude * Mathf.Sin(t * Mathf.PI * 2f / pulsePeriod + phase);
             _segmentObjects[i].transform.localScale = Vector3.one * s;
+
+            // Gradient: t=0 → head (bright), t=1 → tail (dark)
+            float gt  = cnt > 1 ? (float)i / (cnt - 1) : 0f;
+            var   col = Color.Lerp(headColor, tailColor, gt);
+            var   sr  = _segmentObjects[i].GetComponent<SpriteRenderer>();
+            if (sr != null) sr.color = col;
         }
 
         // WiFi arcs follow head and rotate with direction
