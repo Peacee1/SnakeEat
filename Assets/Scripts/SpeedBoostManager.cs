@@ -18,8 +18,8 @@ public class SpeedBoostManager : MonoBehaviour
     [SerializeField] private UIManager       uiManager;
 
     [Header("Base Speed")]
-    [Tooltip("Starting ticks-per-second (no boost)")]
-    [SerializeField] private float baseSpeed = 50f;
+    [Tooltip("Initial ticks-per-second. GameManager overrides this via ScaleSpeedForLevelUp().")]
+    [SerializeField] private float baseSpeed = 3f;   // Level 1 default — overridden by GameManager
 
     [Tooltip("Hard cap on speed (ticks/s). Expensive gifts stack but cannot exceed this.")]
     [SerializeField] private float maxSpeed  = 5000f;
@@ -47,7 +47,11 @@ public class SpeedBoostManager : MonoBehaviour
     private void Start()
     {
         _nextLikeMilestone = likeMilestone;
-        ApplySpeed(CurrentSpeed);
+        // NOTE: Do NOT call ApplySpeed here.
+        // GameManager.SetupLevel() calls ScaleSpeedForLevelUp() which sets
+        // the correct level base speed + reapplies total speed.
+        // Calling ApplySpeed here would race against GameManager.Start()
+        // and could overwrite the level speed with the stale Inspector value.
 
         if (tiktokConnector == null)
         {
