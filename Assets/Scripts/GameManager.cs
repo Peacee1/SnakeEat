@@ -166,8 +166,19 @@ public class GameManager : MonoBehaviour
         _currentBoardSize = Level1BoardSize * (1 << (level - 1)); // 5 * 2^(level-1)
 
         // Speed: 3 ticks/s at level 1, doubles each level → 3·2^(level-1)
-        float speed  = Level1Speed * (1 << (level - 1));  // 3, 6, 12, 24, 48
-        tickInterval = 1f / speed;
+        float levelSpeed = Level1Speed * (1 << (level - 1));  // 3, 6, 12, 24, 48
+
+        if (speedBoostManager != null)
+        {
+            // Let SpeedBoostManager handle it: scales boost proportionally so
+            // total speed = (oldTotal) × 2, not just base × 2.
+            speedBoostManager.ScaleSpeedForLevelUp(levelSpeed);
+        }
+        else
+        {
+            // Fallback if no SpeedBoostManager in scene.
+            tickInterval = 1f / levelSpeed;
+        }
         if (!carryScore) _score = 0;
 
         // Resize grid

@@ -125,6 +125,23 @@ public class SpeedBoostManager : MonoBehaviour
         Debug.Log($"[Boost] ♻️ Speed reset → {baseSpeed} ticks/s");
     }
 
+    /// <summary>
+    /// Called on level-up. Sets the new level base speed AND scales the existing
+    /// permanent boost by the same ratio, so the total speed doubles cleanly.
+    ///
+    /// Example: base=24, boost=6, total=30 → scale=×2 → base=48, boost=12, total=60.
+    /// </summary>
+    public void ScaleSpeedForLevelUp(float newBaseSpeed)
+    {
+        float oldBase    = baseSpeed;
+        float scale      = oldBase > 0f ? newBaseSpeed / oldBase : 1f;
+        _permanentBoost *= scale;
+        baseSpeed        = newBaseSpeed;
+        ApplySpeed(CurrentSpeed);
+        Debug.Log($"[Boost] 🆙 Level up scale ×{scale:F2}: base {oldBase}→{baseSpeed} | " +
+                  $"boost ×{scale:F2} = {_permanentBoost:F1} | total = {CurrentSpeed:F1}");
+    }
+
     private void ApplySpeed(float ticksPerSecond)
     {
         if (gameManager != null)
